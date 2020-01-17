@@ -1,0 +1,36 @@
+---
+- name: Update packages
+  yum:
+   name: '*'
+   state: latest
+  become: yes
+
+- name: Install epel
+  yum:
+    name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    state: present
+  become: yes
+
+- name: Install fio
+  yum:
+    name: fio
+    state: present
+  become: yes
+
+- name: Create directory to store results
+  file:
+    path: ~/data
+    state: directory
+
+- name: Run fio
+  shell: |
+    fio -ioengine=libaio -direct=1 -invalidate=1 --filename=/dev/vdb --size=4G -numjobs=1 -runtime=60i- -group_reporting -name=fio --output-format=json \
+        --rw={{ type }} -bs={{ bs }} -iodepth={{ iodepth }} --output /home/centos/data/fio-results.json 
+  args:
+    chdir: /home/centos/data
+  become: yes
+
+- name: copy results
+  fetch:
+     src: /home/centos/data/fio-results.json
+     dest: "~/fio-results/{{ type }}/{{ number_of_servers }}"

@@ -1,0 +1,12 @@
+---
+# instance settings
+instance_name_prefix: fio-test
+number_of_servers: 1
+number_of_volumes: 1
+volume_size: 4
+
+bs: 4k
+# read, write, randread, randwrite
+type: read
+# iodepth 1, 2, 4, 8, 16, 32, 64
+iodepth: 1

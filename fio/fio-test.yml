@@ -1,0 +1,59 @@
+---
+- hosts: localhost
+  tasks:
+    - name: create cinder volumes
+      os_volume:
+        display_name: "{{ instance_name_prefix }}-{{ item }}"
+        size: "{{ volume_size }}"
+        state: present
+      with_sequence: start=1 end={{ number_of_servers }} format=%02x
+      register: volume
+
+    - name: create compute instances
+      os_server:
+        state: present
+        name: "{{ instance_name_prefix }}-{{ item }}"
+        image: centos7
+        key_name: admin
+        flavor: m1.medium
+        nics:
+          - net-id: 1e3660e1-e55e-4253-8d72-566d6532e0a3
+        security_groups: admin
+        auto_ip: yes
+        wait: yes
+      with_sequence: start=1 end={{ number_of_servers }} format=%02x
+      register: instance
+
+    - name: Pause for 60 seconds
+      command: sleep 60
+    - name: Attach volume to instance
+      os_server_volume:
+         server: "{{ item.server.name }}"
+         volume: "{{ item.server.name }}"
+         state: present
+         device: /dev/vdb
+      with_items: "{{ instance.results }}"
+    - name: Add instance to inventory
+      add_host:
+         name: "{{ item.server.name }}"
+         groups: fio
+         ansible_ssh_host: "{{ item.server.public_v4 }}"
+         ansible_ssh_user: centos
+      with_items: "{{ instance.results }}"
+
+- hosts: fio
+  roles:
+    - fio
+
+- hosts: localhost
+  tasks:
+      - name: Remove instances
+        os_server:
+         name: "{{ item.server.name }}"
+         state: absent 
+        with_items: "{{ instance.results }}"
+      - name: Remove volumes
+        os_volume:
+          name: "{{ item.volume.name }}"
+          state: absent
+        with_items: "{{ volume.results }}"
